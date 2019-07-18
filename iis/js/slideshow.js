@@ -11,44 +11,47 @@ export class Sign {
 
         document.getElementById(this.signElement).classList.add('signage-wrapper');
 
-        this.options.slides.forEach((slide, index) => {
+        this.options.slides.forEach((slide, slideIndex) => {
             let newSlide = document.createElement('div');
-            newSlide.classList.add('sign', `${this.signElement}${index}`);
+            newSlide.classList.add('sign', `${this.signElement}${slideIndex}`);
 
-            if(slide.type == 'image') {
-                let slideMedia = document.createElement('img');
-                slideMedia.src = slide.media;
-                newSlide.appendChild(slideMedia);
-            } else if (slide.type == 'video') {
-                let slideMedia = document.createElement('video');
-                slideMedia.setAttribute('muted', 'muted');
-                let source = document.createElement('source');
-                source.src = slide.media;
-                source.type = `video/${slide.media.split('.').pop()}`;
-                slideMedia.appendChild(source);
-                newSlide.appendChild(slideMedia);
-            } else {
-                console.warn(`no media type was specified for the slide ${slide.media}`)
-            }
+            slide.partitions.forEach((partition, partitionIndex) => {
+                let newPartition = document.createElement('div');
+                newPartition.classList.add('partition'), `s${slideIndex}p${partitionIndex}`
+                if (partition.media.split('.').pop() !== 'mp4') {
+                    let partitionMedia = document.createElement('img');
+                    partitionMedia.src = partition.media;
+                    slide.appendChild(partitionMedia);
+                } else {
+                    let partitionMedia = document.createElement('video');
+                    partitionMedia.setAttribute('muted', 'muted');
+                    let source = document.createElement('source');
+                    source.src = partition.media;
+                    source.type = `video/${partition.media.split('.').pop()}`;
+                    partitionMedia.appendChild(source);
+                    partitionMedia.appendChild(partitionMedia);
+                }
+            })
+            
             slide.element = newSlide;
             document.getElementById(this.signElement).appendChild(newSlide);
             this.start();
         })
     }
     async start() {
-        setTimeout(() => {
-            let newIndex = this.currentSlide;
-            let newSlide = this.options.slides[newIndex];
-            if (!newSlide.hasOwnProperty('type') && !newSlide.hasOwnProperty('media')) { console.warn('either the slide type or slide media is missing'); return; }
-    
-            let transition = newSlide.hasOwnProperty('transition') ? newSlide.transition : this.options.transition;
-            animateCSS(newSlide.element, transition, () => {
-    
-            });
-            if(newSlide.type == 'image') {
+        let newIndex = this.currentSlide;
+        let newSlide = this.options.slides[newIndex];
+        if (!newSlide.hasOwnProperty('type') && !newSlide.hasOwnProperty('media')) { console.warn('either the slide type or slide media is missing'); return; }
+
+        let transition = newSlide.hasOwnProperty('transition') ? newSlide.transition : this.options.transition;
+        animateCSS(newSlide.element, transition, () => {
+
+        });
+        newSlide.partitions.forEach((partition, index) => {
+            if(partition.media.split('.').pop() !== 'mp4') {
                 setTimeout(() => {
                     this.rotate();
-                }, newSlide.duration*1000);
+                }, partition.duration*1000);
             } else if(newSlide.type == 'video') {            
                 newSlide.element.getElementsByTagName('video')[0].oncanplay = () => {
                     newSlide.element.getElementsByTagName('video')[0].play();
@@ -57,7 +60,7 @@ export class Sign {
                     this.rotate();
                 }
             }
-        }, 2000)
+        })
     }
     rotate() {
         let oldIndex = this.currentSlide++;

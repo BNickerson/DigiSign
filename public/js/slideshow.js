@@ -11,48 +11,56 @@ export class Sign {
 
         document.getElementById(this.signElement).classList.add('signage-wrapper');
 
-        this.options.slides.forEach((slide, index) => {
+        this.options.slides.forEach((slide, slideIndex) => {
             let newSlide = document.createElement('div');
-            newSlide.classList.add('sign', `${this.signElement}${index}`);
+            newSlide.classList.add('sign', `${this.signElement}${slideIndex}`);
 
-            if(slide.type == 'image') {
-                let slideMedia = document.createElement('img');
-                slideMedia.src = slide.media;
-                newSlide.appendChild(slideMedia);
-            } else if (slide.type == 'video') {
-                let slideMedia = document.createElement('video');
-                slideMedia.setAttribute('muted', 'muted');
-                let source = document.createElement('source');
-                source.src = slide.media;
-                source.type = `video/${slide.media.split('.').pop()}`;
-                slideMedia.appendChild(source);
-                newSlide.appendChild(slideMedia);
-            } else {
-                console.warn(`no media type was specified for the slide ${slide.media}`)
-            }
+            slide.partitions.forEach((partition, partitionIndex) => {
+                let newPartition = document.createElement('div');
+                newPartition.classList.add('partition'), `s${slideIndex}p${partitionIndex}`
+                
+                let partitionMedia;
+                if (partition.media.split('.').pop() !== 'mp4') {
+                    partitionMedia = document.createElement('img');
+                    partitionMedia.src = partition.media;
+                } else {
+                    partitionMedia = document.createElement('video');
+                    partitionMedia.setAttribute('muted', 'muted');
+                    let source = document.createElement('source');
+                    source.src = partition.media;
+                    source.type = `video/${partition.media.split('.').pop()}`;
+                    partitionMedia.appendChild(source);
+                }
+                partitionMedia.setAttribute('style', `position:absolute;left:${(partition.startPoint.x*12)-12}px;top:${(partition.startPoint.y*12)-12}px;width:${partition.size.width*12}px;height:${partition.size.height*12}px;`);
+                newSlide.appendChild(partitionMedia);
+            })
+            
             slide.element = newSlide;
             document.getElementById(this.signElement).appendChild(newSlide);
+            this.start();
         })
     }
     async start() {
         let newIndex = this.currentSlide;
         let newSlide = this.options.slides[newIndex];
-        if (!newSlide.hasOwnProperty('type') && !newSlide.hasOwnProperty('media')) { console.warn('either the slide type or slide media is missing'); return; }
 
         let transition = newSlide.hasOwnProperty('transition') ? newSlide.transition : this.options.transition;
         animateCSS(newSlide.element, transition, () => {
 
         });
-        if(newSlide.type == 'image') {
+        newSlide.partitions.forEach((partition, index) => {
             setTimeout(() => {
                 this.rotate();
-            }, newSlide.duration*1000);
-        } else if(newSlide.type == 'video') {            
-            newSlide.element.getElementsByTagName('video')[0].play();
-            newSlide.element.getElementsByTagName('video')[0].onended = () => {
-                this.rotate();
+            }, newSlide.duration*1000)
+            if(partition.media.split('.').pop() == 'mp4') {
+                let videos = [...newSlide.element.getElementsByTagName('video')];
+                videos.forEach((video) => {
+                    video.oncanplay = () => {
+                        video.play();
+                    }
+                })
             }
-        }
+        }) 
     }
     rotate() {
         let oldIndex = this.currentSlide++;
@@ -62,25 +70,33 @@ export class Sign {
         let oldSlide = this.options.slides[oldIndex];
         let newSlide = this.options.slides[newIndex];
 
-        if (!newSlide.hasOwnProperty('type') && !newSlide.hasOwnProperty('media')) { console.warn('either the slide type or slide media is missing'); return; }
-
         let transition = newSlide.hasOwnProperty('transition') ? newSlide.transition : this.options.transition;
         if(oldIndex !== newIndex) {
             animateCSS(newSlide.element, transition, () => {
                 oldSlide.element.classList.remove('show');
             });
         }
-        
-        if(newSlide.type == 'image') {
+        newSlide.partitions.forEach((partition, index) => {
             setTimeout(() => {
+                if(partition.media.split('.').pop() == 'mp4') {
+                    let videos = [...newSlide.element.getElementsByTagName('video')];
+                    videos.forEach((video) => {
+                        video.pause();
+                        video.currentTime = 0;
+                    })
+                }
                 this.rotate();
-            }, newSlide.duration*1000);
-        } else if(newSlide.type == 'video') {            
-            newSlide.element.getElementsByTagName('video')[0].play();
-            newSlide.element.getElementsByTagName('video')[0].onended = () => {
-                this.rotate();
+            }, newSlide.duration*1000)
+            
+            if(partition.media.split('.').pop() == 'mp4') {
+                let videos = [...newSlide.element.getElementsByTagName('video')];
+                videos.forEach((video) => {
+                    video.oncanplay = () => {
+                        video.play();
+                    }
+                })
             }
-        }
+        }) 
     }
 }
 
